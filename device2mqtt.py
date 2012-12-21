@@ -30,6 +30,7 @@ from config import Config
 MYID = socket.gethostname()
 CLIENT_NAME = "device2mqtt[" + MYID + "]"
 CLIENT_VERSION = "0.6"
+CLIENT_TOPIC = "/client/" + CLIENT_NAME + "/" 
 MQTT_TIMEOUT = 60	#seconds
 WATCH_TOPIC = "/device/" + MYID + "/command"
 LOGFORMAT = '%(asctime) - 15s %(message)s'
@@ -58,6 +59,7 @@ def on_connect( self, obj, rc):
 	mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "connected", 1, 1 )
 	mqttc.publish( "/clients/" + CLIENT_NAME + "/version", CLIENT_VERSION, 1, 1 )
 	mqttc.subscribe( WATCH_TOPIC, 2 )
+	mqttc.subscribe( CLIENT_TOPIC + "ping", 2)
 
 
 def on_disconnect( self, obj, rc ):
