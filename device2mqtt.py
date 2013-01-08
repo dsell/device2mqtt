@@ -25,6 +25,7 @@ import signal
 import pynotify
 import threading
 from config import Config
+import commands
 
 
 MYID = socket.gethostname()
@@ -56,8 +57,13 @@ def on_connect( self, obj, rc):
 	global mqtt_connected
 	mqtt_connected = True
 	print "MQTT Connected"
-	mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "connected", 1, 1 )
+	mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "online", 1, 1 )
 	mqttc.publish( "/clients/" + CLIENT_NAME + "/version", CLIENT_VERSION, 1, 1 )
+#	ip = commands.getoutput("/sbin/ifconfig").split("\n")[1].split()[1][5:]
+	p = subprocess.Popen( "curl ifconfig.me/forwarded", shell = True, stdout = subprocess.PIPE )
+	ip = p.stdout.readline()
+	mqttc.publish( "/clients/" + CLIENT_NAME + "/ip", ip, 1, 1 )
+	mqttc.publish( "/clients/" + CLIENT_NAME + "/pid", os.getpid(), 1, 1 )
 	mqttc.subscribe( WATCH_TOPIC, 2 )
 	mqttc.subscribe( CLIENT_TOPIC + "ping", 2)
 
@@ -125,7 +131,7 @@ def mqtt_connect():
 	rc = 1
 	while ( rc ):
 		print "Attempting connection..."
-		mqttc.will_set("/clients/" + CLIENT_NAME + "/status", "disconnected_", 1, 1)
+		mqttc.will_set("/clients/" + CLIENT_NAME + "/status", "disconnected", 1, 1)
 
 		#define the mqtt callbacks
 		mqttc.on_message = on_message
@@ -147,6 +153,7 @@ def mqtt_disconnect():
 	if ( mqtt_connected ):
 		mqtt_connected = False 
 		print "MQTT Disconnected"
+		mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "offline", 1, 1 )
 	mqttc.disconnect()
 
 
