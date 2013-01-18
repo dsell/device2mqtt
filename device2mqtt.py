@@ -34,10 +34,12 @@ CLIENT_VERSION = "0.6"
 CLIENT_TOPIC = "/client/" + CLIENT_NAME + "/" 
 MQTT_TIMEOUT = 60	#seconds
 WATCH_TOPIC = "/device/" + MYID + "/command"
-LOGFORMAT = '%(asctime) - 15s %(message)s'
-LOGFILE = "/var/log/mqtt-growl.log"
 
+LOGFORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOGFILE = "/var/log/device2mqtt.log"
+LOGLEVEL=logging.DEBUG
 
+#logging.basicConfig(filename=LOGFILE, level=LOGLEVEL, format=LOGFORMAT)
 #TODO might want to add a lock file
 #TODO  need to deal with no config file existing!!!
 #read in configuration file
@@ -57,6 +59,7 @@ def on_connect( self, obj, rc):
 	global mqtt_connected
 	mqtt_connected = True
 	print "MQTT Connected"
+	logging.info('MQTT connected")
 	mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "online", 1, 1 )
 	mqttc.publish( "/clients/" + CLIENT_NAME + "/version", CLIENT_VERSION, 1, 1 )
 #	ip = commands.getoutput("/sbin/ifconfig").split("\n")[1].split()[1][5:]
@@ -95,12 +98,12 @@ def do_update_loop():
 			#publish external IP
 			p = subprocess.Popen( "curl ifconfig.me/ip", shell = True, stdout = subprocess.PIPE )
 			myip = p.stdout.readline()
-			mqttc.publish( "/device/" + MYID + "/ip", myip.strip('\n'), 1, 1 )
+			mqttc.publish( "/device/" + MYID + "/ip_ext", myip.strip('\n'), 1, 1 )
 
 			#publish internal IP
 			p = subprocess.Popen( "curl ifconfig.me/forwarded", shell = True, stdout = subprocess.PIPE )
 			myip = p.stdout.readline()
-			mqttc.publish( "/device/" + MYID + "/internal", myip.strip('\n'), 1, 1 )
+			mqttc.publish( "/device/" + MYID + "/ip", myip.strip('\n'), 1, 1 )
 
 			#publish SSID's
 			nmc = NMClient.Client.new()
@@ -152,6 +155,7 @@ def mqtt_disconnect():
 	global mqtt_connected
 	if ( mqtt_connected ):
 		mqtt_connected = False 
+		logging.info("MQTT disconnected")
 		print "MQTT Disconnected"
 		mqttc.publish ( "/clients/" + CLIENT_NAME + "/status" , "offline", 1, 1 )
 	mqttc.disconnect()
@@ -165,7 +169,7 @@ def cleanup(signum, frame):
 
 
 #create an mqtt client
-mqttc = mosquitto.Mosquitto( CLIENT_NAME )
+mqttc = mosquitto.Mosquitto( CLIENT_NAME, clean_session = False )
 
 #trap kill signals including control-c
 signal.signal(signal.SIGTERM, cleanup)
