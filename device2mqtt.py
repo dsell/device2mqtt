@@ -13,7 +13,7 @@ __copyright__ = "Copyright (C) Dennis Sell"
 
 
 APPNAME = "device2mqtt"
-VERSION = "0.8"
+VERSION = "0.10"
 WATCHTOPIC = "/raw/" + APPNAME + "/command"
 
 import sys
@@ -42,8 +42,8 @@ class MyMQTTClientCore(MQTTClientCore):
         self.clientversion = VERSION 
         self.alarmfile = self.cfg.ALARMFILE
 
-        t = threading.Thread(target=self.do_thread_loop)
-        t.start()
+        self.t = threading.Thread(target=self.do_thread_loop)
+        self.t.start()
 
     def on_connect(self, mself, obj, rc):
         MQTTClientCore.on_connect(self, mself, obj, rc)
@@ -64,37 +64,36 @@ class MyMQTTClientCore(MQTTClientCore):
     def do_thread_loop(self):
         while ( self.running ):
             if ( self.mqtt_connected ):    
-                    #publish external IP
-                    p = subprocess.Popen( "curl ifconfig.me/ip", shell = True, stdout = subprocess.PIPE )
-                    myip = p.stdout.readline()
-                    self.mqttc.publish( "/device/" + self.clientname + "/ip_ext", myip.strip('\n'), qos=1, retain=True)
+                #publish external IP
+                p = subprocess.Popen( "curl ifconfig.me/ip", shell = True, stdout = subprocess.PIPE )
+                myip = p.stdout.readline()
+                self.mqttc.publish( "/device/" + self.clientname + "/ip_ext", myip.strip('\n'), qos=1, retain=True)
 
-                    #publish internal IP
-                    p = subprocess.Popen( "curl ifconfig.me/forwarded", shell = True, stdout = subprocess.PIPE )
-                    myip = p.stdout.readline()
-                    self.mqttc.publish( "/device/" + self.clientname + "/ip", myip.strip('\n'), qos=1, retain=True)
+                #publish internal IP
+                p = subprocess.Popen( "curl ifconfig.me/forwarded", shell = True, stdout = subprocess.PIPE )
+                myip = p.stdout.readline()
+                self.mqttc.publish( "/device/" + self.clientname + "/ip", myip.strip('\n'), qos=1, retain=True)
 
-                    #publish SSID's
-                    nmc = NMClient.Client.new()
-                    devs = nmc.get_devices()
-                    ssids = ""
-                    bssids = ""
-                    for dev in devs:
-                        if dev.get_device_type() == NetworkManager.DeviceType.WIFI:
-                            for ap in dev.get_access_points():
-                                ssids += "\n"
-                                ssids += ap.get_ssid()
-                                bssids += "\n"
-                                bssids += ap.get_bssid()
-                    self.mqttc.publish( "/device/" + self.clientname + "/ssids", ssids, qos=1, retain=True)
-                    self.mqttc.publish( "/device/" + self.clientname + "/bssids", bssids, qos=1, retain=True)
+                #publish SSID's
+                nmc = NMClient.Client.new()
+                devs = nmc.get_devices()
+                ssids = ""
+                bssids = ""
+                for dev in devs:
+                    if dev.get_device_type() == NetworkManager.DeviceType.WIFI:
+                        for ap in dev.get_access_points():
+                            ssids += "\n"
+                            ssids += ap.get_ssid()
+                            bssids += "\n"
+                            bssids += ap.get_bssid()
+                self.mqttc.publish( "/device/" + self.clientname + "/ssids", ssids, qos=1, retain=True)
+                self.mqttc.publish( "/device/" + self.clientname + "/bssids", bssids, qos=1, retain=True)
 
-                    #publish time of update
-                    self.mqttc.publish( "/device/" + self.clientname + "/time", time.strftime( "%x %X" ), qos=1, retain=True)
-                    count = 60
-                    while ( self.mqtt_connected and ( count != 0 )):
-                        count -= 1
-                        time.sleep(10)
+                #publish time of update
+                self.mqttc.publish( "/device/" + self.clientname + "/time", time.strftime( "%x %X" ), qos=1, retain=True)
+                if ( self.interval ):
+                    print "Waiting ", self.interval, " minutes for next update."
+                    time.sleep(self.interval*60)
 
 
 class MyDaemon(Daemon):
