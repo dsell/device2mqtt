@@ -13,7 +13,7 @@ __copyright__ = "Copyright (C) Dennis Sell"
 
 
 APPNAME = "device2mqtt"
-VERSION = "0.10"
+VERSION = "0.11"
 WATCHTOPIC = "/raw/" + APPNAME + "/command"
 
 import sys
@@ -41,7 +41,7 @@ class MyMQTTClientCore(MQTTClientCore):
         self.watchtopic = WATCHTOPIC
         self.clientversion = VERSION 
         self.alarmfile = self.cfg.ALARMFILE
-
+        self.interval = 15
         self.t = threading.Thread(target=self.do_thread_loop)
         self.t.start()
 
@@ -86,8 +86,8 @@ class MyMQTTClientCore(MQTTClientCore):
                             ssids += ap.get_ssid()
                             bssids += "\n"
                             bssids += ap.get_bssid()
-                self.mqttc.publish( "/device/" + self.clientname + "/ssids", ssids, qos=1, retain=True)
-                self.mqttc.publish( "/device/" + self.clientname + "/bssids", bssids, qos=1, retain=True)
+                self.mqttc.publish( "/device/" + self.clientname + "/ssids", ssids.strip().replace("\l", ",").replace("\n", "," ), qos=1, retain=True)
+                self.mqttc.publish( "/device/" + self.clientname + "/bssids", bssids.strip().replace("\l", ",").replace("\n", "," ), qos=1, retain=True)
 
                 #publish time of update
                 self.mqttc.publish( "/device/" + self.clientname + "/time", time.strftime( "%x %X" ), qos=1, retain=True)
